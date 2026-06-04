@@ -53,14 +53,14 @@ export function ResultCard({
         <div className="flex-1 space-y-3">
           {/* Institute name */}
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/10">
-              <GraduationCap className="h-4 w-4 text-blue-400" />
+            <div className="mt-0.5 p-2 rounded-xl bg-gradient-to-br from-slate-400/20 to-gray-500/10 border border-slate-400/10">
+              <GraduationCap className="h-4 w-4 text-slate-300" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-white text-sm sm:text-base leading-snug line-clamp-2">
                 {result.instituteName}
               </h3>
-              <p className="text-blue-400 text-sm font-medium mt-0.5">
+              <p className="text-slate-300 text-sm font-medium mt-0.5">
                 {result.branchName}
               </p>
             </div>
@@ -137,7 +137,7 @@ export function ResultCard({
                 aria-label={isBookmarked ? "Remove bookmark" : "Bookmark"}
               >
                 {isBookmarked ? (
-                  <BookmarkCheck className="h-4 w-4 text-blue-400" />
+                  <BookmarkCheck className="h-4 w-4 text-slate-300" />
                 ) : (
                   <Bookmark className="h-4 w-4" />
                 )}
@@ -174,7 +174,7 @@ export function ResultCard({
         </div>
         <div className="mt-1 h-1 rounded-full bg-white/5 overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-1000"
+            className="h-full rounded-full bg-gradient-to-r from-slate-500 to-gray-400 transition-all duration-1000"
             style={{ width: `${Math.min(result.score, 100)}%` }}
           />
         </div>

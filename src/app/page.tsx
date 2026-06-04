@@ -6,8 +6,6 @@ import {
   TrendingUp,
   Search,
   Database,
-  ChevronLeft,
-  ChevronRight,
   Download,
   FileText,
 } from "lucide-react";
@@ -61,7 +59,7 @@ export default function HomePage() {
     async (filters: SearchFilters, pageNum = 1) => {
       setIsLoading(true);
       setHasSearched(true);
-      setCurrentFilters(filters);
+      if (pageNum === 1) setCurrentFilters(filters);
 
       try {
         const res = await fetch("/api/predict", {
@@ -71,13 +69,17 @@ export default function HomePage() {
         });
 
         const data: PredictionResponse = await res.json();
-        setResults(data.results);
+        if (pageNum === 1) {
+          setResults(data.results);
+        } else {
+          setResults((prev) => [...prev, ...data.results]);
+        }
         setTotalPages(data.totalPages);
         setTotalCount(data.totalCount);
         setPage(pageNum);
       } catch (error) {
         console.error("Search failed:", error);
-        setResults([]);
+        if (pageNum === 1) setResults([]);
       } finally {
         setIsLoading(false);
       }
@@ -85,12 +87,22 @@ export default function HomePage() {
     []
   );
 
-  const handlePageChange = (newPage: number) => {
-    if (currentFilters) {
-      handleSearch(currentFilters, newPage);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
+  const [loadMoreNode, setLoadMoreNode] = useState<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!loadMoreNode || isLoading || page >= totalPages) return;
+    
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && currentFilters) {
+        handleSearch(currentFilters, page + 1);
+      }
+    });
+    
+    observer.observe(loadMoreNode);
+    return () => observer.disconnect();
+  }, [loadMoreNode, isLoading, page, totalPages, currentFilters, handleSearch]);
+
+
 
   const handleBookmark = (result: PredictionResult) => {
     const id = `${result.instituteName}-${result.branchName}-${result.year}`;
@@ -374,30 +386,13 @@ export default function HomePage() {
             </Card>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4 pt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => handlePageChange(page - 1)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-              <span className="text-sm text-white/50">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => handlePageChange(page + 1)}
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+          {/* Infinite Scroll Sentinel */}
+          {page < totalPages && (
+            <div 
+              ref={setLoadMoreNode} 
+              className="flex justify-center p-6 text-white/40 text-sm font-medium tracking-wide animate-pulse"
+            >
+              Loading more...
             </div>
           )}
         </div>
