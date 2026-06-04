@@ -56,6 +56,7 @@ body {
       transparent 70%
     ),
     var(--color-background);
+  background-attachment: fixed;
 }
 
 /* Glass card effect */

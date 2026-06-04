@@ -53,7 +53,7 @@ export default function RootLayout({
         >
           <Header />
           <main className="flex-1">{children}</main>
-          <footer className="glass border-t border-white/5 py-6 mt-auto">
+          <footer className="border-t border-white/[0.04] py-6 mt-auto">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white/30 text-sm">
               <p>
                 CollegePredictor © {new Date().getFullYear()} — Built with
