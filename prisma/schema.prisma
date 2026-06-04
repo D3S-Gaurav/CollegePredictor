@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Stores all cutoff data from JoSAA and CSAB counselling rounds.
+model Cutoff {
+  id              Int      @id @default(autoincrement())
+  counsellingType String   @map("counselling_type")
+  year            Int
+  round           Int
+  instituteName   String   @map("institute_name")
+  instituteType   String   @map("institute_type")
+  branchName      String   @map("branch_name")
+  quota           String
+  category        String
+  gender          String
+  openingRank     Int      @map("opening_rank")
+  closingRank     Int      @map("closing_rank")
+  state           String
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([counsellingType], name: "idx_counselling_type")
+  @@index([year], name: "idx_year")
+  @@index([round], name: "idx_round")
+  @@index([category], name: "idx_category")
+  @@index([gender], name: "idx_gender")
+  @@index([quota], name: "idx_quota")
+  @@index([closingRank], name: "idx_closing_rank")
+  @@index([counsellingType, year, category, gender], name: "idx_composite_main")
+
+  @@map("cutoffs")
+}
