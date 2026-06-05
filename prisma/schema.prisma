@@ -3,6 +3,10 @@ generator client {
   output   = "../src/generated/prisma"
 }
 
+// NOTE: Prisma 7 manages the connection string via prisma.config.ts
+// (using the PrismaPg driver adapter), NOT via url = env("DATABASE_URL") here.
+// If you need to run `prisma migrate` or `prisma studio`, ensure prisma.config.ts
+// is present and DATABASE_URL is set in your .env file.
 datasource db {
   provider = "postgresql"
 }
