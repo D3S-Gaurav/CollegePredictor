@@ -5,7 +5,53 @@ import {
   calculateResultScore,
 } from "@/lib/prediction-engine";
 import type { PredictionResult, PredictionResponse } from "@/types";
-import type { ConfidenceLevel } from "@/lib/constants";
+import { z } from "zod";
+import {
+  CATEGORIES,
+  GENDERS,
+  COUNSELLING_TYPES,
+  INSTITUTE_TYPES,
+  type ConfidenceLevel,
+} from "@/lib/constants";
+import type { Prisma } from "@/generated/prisma/client";
+
+/** Maximum page size to prevent DoS via unreasonably large queries */
+const MAX_PAGE_SIZE = 200;
+
+/**
+ * Zod schema for prediction request validation.
+ *
+ * Why Zod: validates at the API boundary so Prisma never
+ * receives malformed or unexpected filter values.
+ */
+const PredictRequestSchema = z.object({
+  rank: z.number().int().positive("Rank must be a positive integer"),
+  category: z.enum(CATEGORIES),
+  gender: z.enum(GENDERS),
+  homeState: z.string().optional().default(""),
+  year: z.union([z.literal("2024"), z.literal("2025"), z.literal("both")]),
+  round: z.string().default("all"),
+  counsellingType: z.enum(COUNSELLING_TYPES),
+  branchPreferences: z.array(z.string()).optional().default([]),
+  branchGroup: z.string().optional().default(""),
+  instituteType: z
+    .array(z.enum(INSTITUTE_TYPES))
+    .optional()
+    .default([]),
+  stateFilter: z.string().optional().default("all"),
+  confidenceFilter: z
+    .union([
+      z.literal("SAFE"),
+      z.literal("LIKELY"),
+      z.literal("DREAM"),
+      z.literal("REACH"),
+      z.literal("all"),
+    ])
+    .optional()
+    .default("all"),
+  page: z.number().int().positive().optional().default(1),
+  pageSize: z.number().int().positive().optional().default(50),
+});
 
 /**
  * POST /api/predict
@@ -18,6 +64,18 @@ import type { ConfidenceLevel } from "@/lib/constants";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const parsed = PredictRequestSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid request",
+          details: parsed.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
     const {
       rank,
       category,
@@ -26,25 +84,18 @@ export async function POST(request: NextRequest) {
       year,
       round,
       counsellingType,
-      branchPreferences = [],
-      branchGroup,
-      instituteType = [],
+      branchPreferences,
+      instituteType,
       stateFilter,
-      confidenceFilter = "all",
-      page = 1,
-      pageSize = 50,
-    } = body;
+      confidenceFilter,
+      page,
+    } = parsed.data;
 
-    if (!rank || rank <= 0) {
-      return NextResponse.json(
-        { error: "Valid rank is required" },
-        { status: 400 }
-      );
-    }
+    // Cap pageSize to prevent DoS
+    const pageSize = Math.min(parsed.data.pageSize, MAX_PAGE_SIZE);
 
-    // Build WHERE clause
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {
+    // Build WHERE clause with proper Prisma types
+    const where: Prisma.CutoffWhereInput = {
       counsellingType,
       category,
       gender,
@@ -71,20 +122,12 @@ export async function POST(request: NextRequest) {
       where.state = stateFilter;
     }
 
-    // Home state quota logic: if user's homeState matches institute state → HS, else → OS
-    // This is handled post-query since it depends on each row's institute state
-    // But we can optimize by not filtering quota here if homeState is set
-
-    // Branch group filter
+    // Branch filter: use OR with case-insensitive partial matching
+    // (The previous `in` filter was dead code — it was set then deleted)
     if (branchPreferences.length > 0) {
-      where.branchName = {
-        in: branchPreferences,
-      };
-      // Also try partial matches via contains for flexibility
-      where.OR = branchPreferences.map((bp: string) => ({
-        branchName: { contains: bp, mode: "insensitive" },
+      where.OR = branchPreferences.map((bp) => ({
+        branchName: { contains: bp, mode: "insensitive" as const },
       }));
-      delete where.branchName;
     }
 
     // Query database
@@ -97,6 +140,73 @@ export async function POST(request: NextRequest) {
       }),
       prisma.cutoff.count({ where }),
     ]);
+
+    // ──────────────────────────────────────────────────────────
+    // BATCHED confidence calculation (fixes N+1 query problem)
+    //
+    // Instead of 1 DB query per cutoff row, we:
+    //  1. Collect unique (instituteName, branchName, quota) tuples
+    //  2. Run ONE query with a WHERE ... OR clause
+    //  3. Group results in-memory by composite key
+    // ──────────────────────────────────────────────────────────
+
+    // Build unique set of (instituteName, branchName, quota) combos
+    type CompositeKey = `${string}|${string}|${string}`;
+    const uniqueCombos = new Map<
+      CompositeKey,
+      { instituteName: string; branchName: string; quota: string }
+    >();
+
+    for (const cutoff of cutoffs) {
+      const key: CompositeKey =
+        `${cutoff.instituteName}|${cutoff.branchName}|${cutoff.quota}`;
+      if (!uniqueCombos.has(key)) {
+        uniqueCombos.set(key, {
+          instituteName: cutoff.instituteName,
+          branchName: cutoff.branchName,
+          quota: cutoff.quota,
+        });
+      }
+    }
+
+    // Single batched query for cross-year confidence data
+    let crossYearMap: Map<CompositeKey, number[]>;
+
+    if (uniqueCombos.size > 0) {
+      const orConditions = Array.from(uniqueCombos.values()).map((combo) => ({
+        counsellingType,
+        instituteName: combo.instituteName,
+        branchName: combo.branchName,
+        category,
+        gender,
+        quota: combo.quota,
+      }));
+
+      const crossYearCutoffs = await prisma.cutoff.findMany({
+        where: { OR: orConditions },
+        select: {
+          instituteName: true,
+          branchName: true,
+          quota: true,
+          closingRank: true,
+        },
+      });
+
+      // Group closing ranks by composite key
+      crossYearMap = new Map();
+      for (const c of crossYearCutoffs) {
+        const key: CompositeKey =
+          `${c.instituteName}|${c.branchName}|${c.quota}`;
+        const existing = crossYearMap.get(key);
+        if (existing) {
+          existing.push(c.closingRank);
+        } else {
+          crossYearMap.set(key, [c.closingRank]);
+        }
+      }
+    } else {
+      crossYearMap = new Map();
+    }
 
     // Post-process: apply HS/OS quota logic and calculate confidence
     const results: PredictionResult[] = [];
@@ -112,20 +222,10 @@ export async function POST(request: NextRequest) {
         if (cutoff.quota === "OS" && isHomeState) continue;
       }
 
-      // Calculate confidence using cross-year data
-      const crossYearCutoffs = await prisma.cutoff.findMany({
-        where: {
-          counsellingType,
-          instituteName: cutoff.instituteName,
-          branchName: cutoff.branchName,
-          category,
-          gender,
-          quota: cutoff.quota,
-        },
-        select: { closingRank: true },
-      });
-
-      const closingRanks = crossYearCutoffs.map((c) => c.closingRank);
+      // Lookup pre-fetched confidence data (O(1) instead of DB hit)
+      const key: CompositeKey =
+        `${cutoff.instituteName}|${cutoff.branchName}|${cutoff.quota}`;
+      const closingRanks = crossYearMap.get(key) ?? [];
       const confidence = calculateConfidence(rank, closingRanks);
 
       // Apply confidence filter
