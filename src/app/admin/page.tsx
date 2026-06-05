@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Shield,
   Upload,
@@ -10,6 +10,8 @@ import {
   AlertCircle,
   Database,
   Loader2,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,10 +40,27 @@ interface ImportResult {
 }
 
 /**
+ * Helper to set the admin-token cookie for proxy auth.
+ * Uses a short-lived cookie (8 hours) scoped to /admin paths.
+ */
+function setAdminCookie(token: string) {
+  const maxAge = 8 * 60 * 60; // 8 hours
+  document.cookie = `admin-token=${encodeURIComponent(token)};path=/;max-age=${maxAge};SameSite=Strict`;
+}
+
+function clearAdminCookie() {
+  document.cookie = "admin-token=;path=/;max-age=0;SameSite=Strict";
+}
+
+/**
  * Admin panel for uploading and managing cutoff data.
+ * Requires authentication via ADMIN_SECRET env var.
  * Supports CSV and XLSX file uploads with validation.
  */
 export default function AdminPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+  const [authError, setAuthError] = useState("");
   const [stats, setStats] = useState<ImportStats[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [counsellingType, setCounsellingType] = useState("JOSAA");
@@ -50,20 +69,70 @@ export default function AdminPage() {
   const [lastResult, setLastResult] = useState<ImportResult | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/import");
+      if (res.status === 401) {
+        setIsAuthenticated(false);
+        return;
+      }
       const data = await res.json();
       setStats(data.stats || []);
       setTotalCount(data.totalCount || 0);
     } catch {
       setStats([]);
     }
+  }, []);
+
+  // Check if already authenticated (cookie exists and is valid)
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("/api/admin/import");
+        if (res.ok) {
+          setIsAuthenticated(true);
+          const data = await res.json();
+          setStats(data.stats || []);
+          setTotalCount(data.totalCount || 0);
+        }
+      } catch {
+        // Not authenticated
+      }
+    };
+    checkAuth();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+
+    // Set the cookie and verify
+    setAdminCookie(tokenInput);
+
+    try {
+      const res = await fetch("/api/admin/import");
+      if (res.ok) {
+        setIsAuthenticated(true);
+        const data = await res.json();
+        setStats(data.stats || []);
+        setTotalCount(data.totalCount || 0);
+      } else {
+        clearAdminCookie();
+        setAuthError("Invalid admin token.");
+      }
+    } catch {
+      clearAdminCookie();
+      setAuthError("Authentication failed.");
+    }
   };
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
+  const handleLogout = () => {
+    clearAdminCookie();
+    setIsAuthenticated(false);
+    setTokenInput("");
+    setStats([]);
+    setTotalCount(0);
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -118,15 +187,75 @@ export default function AdminPage() {
     }
   };
 
+  // Login gate
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-red-500/20 to-rose-500/20">
+                <Shield className="h-5 w-5 text-red-400" />
+              </div>
+              Admin Authentication
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <label
+                  htmlFor="admin-token-input"
+                  className="text-sm font-medium text-white/70"
+                >
+                  Admin Token
+                </label>
+                <input
+                  id="admin-token-input"
+                  type="password"
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  placeholder="Enter ADMIN_SECRET"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 transition-all text-sm"
+                  autoFocus
+                />
+              </div>
+              {authError && (
+                <p className="text-red-400 text-sm flex items-center gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  {authError}
+                </p>
+              )}
+              <Button type="submit" className="w-full gap-2">
+                <LogIn className="h-4 w-4" />
+                Authenticate
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
       <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-red-500/20 to-rose-500/20">
-            <Shield className="h-5 w-5 text-red-400" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-red-500/20 to-rose-500/20">
+              <Shield className="h-5 w-5 text-red-400" />
+            </div>
+            <h1 className="text-3xl font-bold gradient-text">Admin Panel</h1>
           </div>
-          <h1 className="text-3xl font-bold gradient-text">Admin Panel</h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="gap-2 text-white/50 hover:text-white"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </Button>
         </div>
         <p className="text-white/50">Upload and manage cutoff data.</p>
       </div>

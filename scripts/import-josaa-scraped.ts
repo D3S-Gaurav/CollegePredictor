@@ -13,9 +13,12 @@ import { parse } from "csv-parse/sync";
 import * as fs from "fs";
 import * as path from "path";
 
-const CONNECTION_STRING =
-  process.env.DATABASE_URL ||
-  "postgresql://collegeapp:collegeapp123@localhost:5432/college_predictor";
+const CONNECTION_STRING = process.env.DATABASE_URL;
+if (!CONNECTION_STRING) {
+  console.error("❌ DATABASE_URL environment variable is required.");
+  console.error("   Copy .env.example to .env and set your connection string.");
+  process.exit(1);
+}
 
 const CHUNK_SIZE = 2000;
 

@@ -3,7 +3,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { parse } from "url"; // Just to appease any linting or ts-node issues if needed.
 
 // Initialize Prisma client directly since we are in a standalone script
-const connectionString = process.env.DATABASE_URL || "postgresql://collegeapp:collegeapp123@localhost:5432/college_predictor";
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error("❌ DATABASE_URL environment variable is required.");
+  console.error("   Copy .env.example to .env and set your connection string.");
+  process.exit(1);
+}
 const adapter = new PrismaPg(connectionString);
 const prisma = new PrismaClient({ adapter });
 
