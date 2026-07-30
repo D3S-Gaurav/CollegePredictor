@@ -32,18 +32,32 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const [total, institutes, branches, states, instituteTypes] = await Promise.all([
-    prisma.cutoff.count(),
-    prisma.cutoff.findMany({ distinct: ['instituteName'], select: { instituteName: true } }),
-    prisma.cutoff.findMany({ distinct: ['branchName'], select: { branchName: true } }),
-    prisma.cutoff.findMany({ distinct: ['state'], select: { state: true } }),
-    prisma.cutoff.groupBy({ by: ['instituteType'], _count: { _all: true } }),
-  ]);
+  /* Deliberately sequential. Fanning these out with Promise.all opens five
+     simultaneous connections, which a serverless pooler (Neon) will time out
+     under. This script is not latency-sensitive. */
+  const total = await prisma.cutoff.count();
 
   if (total === 0) {
     console.error('The cutoffs table is empty — run the importers before verifying.');
     process.exit(1);
   }
+
+  const institutes = await prisma.cutoff.findMany({
+    distinct: ['instituteName'],
+    select: { instituteName: true },
+  });
+  const branches = await prisma.cutoff.findMany({
+    distinct: ['branchName'],
+    select: { branchName: true },
+  });
+  const states = await prisma.cutoff.findMany({
+    distinct: ['state'],
+    select: { state: true },
+  });
+  const instituteTypes = await prisma.cutoff.groupBy({
+    by: ['instituteType'],
+    _count: { _all: true },
+  });
 
   const rankAggregate = await prisma.cutoff.aggregate({
     _min: { closingRank: true },

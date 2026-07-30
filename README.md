@@ -252,21 +252,31 @@ npx prisma generate
 npx prisma migrate deploy
 ```
 
-Load data — either import the committed archives:
+**Load data.** No cutoff data is committed to this repository — the importers
+each take a file path, so you need to obtain the source data first.
+
+Scrape it from the official archive (slow, and it hits a live government
+site — run it considerately):
 
 ```bash
-npm run import:josaa-2024
-npm run import:josaa-2025
-npm run import:csab-2024
-npm run import:csab-2025
-npm run verify:data
+npm run scrape-josaa          # writes CSVs to the project root
+npm run import:josaa-scraped <path-to-csv>
 ```
 
-…or scrape from source (slow; hits the live site):
+Or, if you already hold JoSAA/CSAB exports, import them directly. Each script
+takes a `.csv` or `.xlsx` path and tags the rows with its source and year:
 
 ```bash
-npm run scrape-josaa
-npm run import:josaa-scraped
+npm run import:josaa-2024 -- <path-to-josaa-2024.csv>
+npm run import:josaa-2025 -- <path-to-josaa-2025.csv>
+npm run import:csab-2024  -- <path-to-csab-2024.csv>
+npm run import:csab-2025  -- <path-to-csab-2025.csv>
+```
+
+Then confirm what actually landed:
+
+```bash
+npm run verify:data
 ```
 
 Then:
@@ -277,6 +287,11 @@ npm run dev     # http://localhost:3000
 
 > `src/generated/prisma` is gitignored, so `npx prisma generate` must run after
 > every clone and after any schema change.
+
+> **Neon and other serverless Postgres:** use the **direct** endpoint rather
+> than the `-pooler` one. Prisma holds a long-lived client, which PgBouncer
+> handles poorly. Avoid fanning queries out with `Promise.all` for the same
+> reason — `scripts/verify-data.ts` runs sequentially on purpose.
 
 ---
 
