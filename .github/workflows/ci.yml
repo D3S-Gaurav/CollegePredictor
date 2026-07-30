@@ -1,0 +1,37 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      # The Prisma client is generated from the schema alone and the unit
+      # tests never open a connection, so a placeholder satisfies both
+      # prisma.config.ts and the module-level read in src/lib/prisma.ts.
+      DATABASE_URL: postgresql://unused:unused@localhost:5432/unused
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      # src/generated/prisma is gitignored, so it must be regenerated here
+      # before typechecking or testing can resolve @/generated/prisma/client.
+      - run: npx prisma generate
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npm run build
+
+  # End-to-end specs drive a browser against a populated database, which CI
+  # does not provision. Run them locally or against a deployment:
+  #   E2E_BASE_URL=https://... npm run test:e2e
