@@ -52,19 +52,24 @@ export default function AnalyticsPage() {
   const [institute, setInstitute] = useState("");
   const [trends, setTrends] = useState<TrendPoint[]>([]);
   const [institutes, setInstitutes] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  /* Starts true: the mount effect below fetches immediately, and seeding the
+     initial value here avoids a synchronous setState inside that effect. */
+  const [isLoading, setIsLoading] = useState(true);
 
+  const buildParams = () =>
+    new URLSearchParams({
+      branch,
+      counsellingType,
+      category,
+      gender,
+      ...(institute && { institute }),
+    });
+
+  /** Manual refetch, triggered when the user changes a filter. */
   const fetchAnalytics = async () => {
     setIsLoading(true);
     try {
-      const params = new URLSearchParams({
-        branch,
-        counsellingType,
-        category,
-        gender,
-        ...(institute && { institute }),
-      });
-      const res = await fetch(`/api/analytics?${params}`);
+      const res = await fetch(`/api/analytics?${buildParams()}`);
       const data = await res.json();
       setTrends(data.trends || []);
       setInstitutes(data.institutes || []);
@@ -75,8 +80,30 @@ export default function AnalyticsPage() {
     }
   };
 
+  // Initial load. Every state write happens after an await, and results are
+  // discarded if the component unmounts mid-flight.
   useEffect(() => {
-    fetchAnalytics();
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/analytics?${buildParams()}`);
+        const data = await res.json();
+        if (cancelled) return;
+        setTrends(data.trends || []);
+        setInstitutes(data.institutes || []);
+      } catch {
+        if (!cancelled) setTrends([]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // Filters are read once on mount; later changes go through fetchAnalytics.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

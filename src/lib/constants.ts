@@ -111,3 +111,16 @@ export const CONFIDENCE_THRESHOLDS = {
 } as const;
 
 export type ConfidenceLevel = "SAFE" | "LIKELY" | "DREAM" | "REACH";
+
+/**
+ * localStorage keys. Centralised so the home, wishlist and compare pages
+ * cannot drift apart, and so the empty-state fallbacks below stay
+ * referentially stable for `useLocalStorageState`.
+ */
+export const STORAGE_KEYS = {
+  WISHLIST: "college-predictor-wishlist",
+  COMPARE: "college-predictor-compare",
+} as const;
+
+/** Stable empty array shared by every localStorage-backed list. */
+export const EMPTY_LIST: never[] = [];

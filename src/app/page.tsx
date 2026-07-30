@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SearchForm } from "@/components/search-form";
 import { ResultCard } from "@/components/result-card";
+import { useLocalStorageState } from "@/lib/use-local-storage-state";
+import { STORAGE_KEYS, EMPTY_LIST } from "@/lib/constants";
 import type { SearchFilters, PredictionResult, PredictionResponse, WishlistItem } from "@/types";
 
 /**
@@ -34,7 +36,10 @@ export default function HomePage() {
     null
   );
   const [availableBranches, setAvailableBranches] = useState<string[]>([]);
-  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [wishlist, setWishlist] = useLocalStorageState<WishlistItem[]>(
+    STORAGE_KEYS.WISHLIST,
+    EMPTY_LIST,
+  );
   const [compareList, setCompareList] = useState<PredictionResult[]>([]);
 
   // Load branches for the current counselling type
@@ -44,16 +49,6 @@ export default function HomePage() {
       .then((data) => setAvailableBranches(data))
       .catch(() => setAvailableBranches([]));
   }, [counsellingType]);
-
-  // Load wishlist from localStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("college-predictor-wishlist");
-      if (stored) setWishlist(JSON.parse(stored));
-    } catch {
-      // Ignore parse errors
-    }
-  }, []);
 
   const handleSearch = useCallback(
     async (filters: SearchFilters, pageNum = 1) => {
@@ -127,10 +122,7 @@ export default function HomePage() {
           },
         ];
       }
-      localStorage.setItem(
-        "college-predictor-wishlist",
-        JSON.stringify(updated)
-      );
+      // Persistence is handled by useLocalStorageState.
       return updated;
     });
   };
@@ -353,7 +345,7 @@ export default function HomePage() {
 
           {/* Results */}
           {!isLoading && results.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-3" data-testid="results-list">
               {results.map((result, index) => (
                 <ResultCard
                   key={result.id}
@@ -374,7 +366,7 @@ export default function HomePage() {
 
           {/* No results */}
           {!isLoading && results.length === 0 && hasSearched && (
-            <Card className="p-12 text-center">
+            <Card className="p-12 text-center" data-testid="no-results">
               <Search className="h-12 w-12 text-white/20 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-white/60">
                 No colleges found

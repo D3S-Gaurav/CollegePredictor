@@ -1,29 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { GitCompare, Plus, Trash2, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getConfidenceBadgeColor } from "@/lib/prediction-engine";
+import { useLocalStorageState } from "@/lib/use-local-storage-state";
+import { STORAGE_KEYS, EMPTY_LIST } from "@/lib/constants";
 import type { CompareItem } from "@/types";
 import type { ConfidenceLevel } from "@/lib/constants";
 
 export default function ComparePage() {
-  const [items, setItems] = useState<CompareItem[]>([]);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("college-predictor-compare");
-      if (stored) setItems(JSON.parse(stored));
-    } catch { /* empty */ }
-  }, []);
-
-  const saveItems = (newItems: CompareItem[]) => {
-    setItems(newItems);
-    localStorage.setItem("college-predictor-compare", JSON.stringify(newItems));
-  };
+  const [items, saveItems] = useLocalStorageState<CompareItem[]>(
+    STORAGE_KEYS.COMPARE,
+    EMPTY_LIST,
+  );
 
   const removeItem = (idx: number) => {
     saveItems(items.filter((_, i) => i !== idx));

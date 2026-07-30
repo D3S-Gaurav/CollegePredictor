@@ -1,33 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Bookmark, Trash2, Download, MapPin, Award } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getConfidenceBadgeColor } from "@/lib/prediction-engine";
+import { useLocalStorageState } from "@/lib/use-local-storage-state";
+import { STORAGE_KEYS, EMPTY_LIST } from "@/lib/constants";
 import type { WishlistItem } from "@/types";
 
 export default function WishlistPage() {
-  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("college-predictor-wishlist");
-      if (stored) setWishlist(JSON.parse(stored));
-    } catch { /* empty */ }
-  }, []);
+  const [wishlist, setWishlist] = useLocalStorageState<WishlistItem[]>(
+    STORAGE_KEYS.WISHLIST,
+    EMPTY_LIST,
+  );
 
   const removeItem = (id: string) => {
-    const updated = wishlist.filter((w) => w.id !== id);
-    setWishlist(updated);
-    localStorage.setItem("college-predictor-wishlist", JSON.stringify(updated));
+    setWishlist(wishlist.filter((w) => w.id !== id));
   };
 
   const clearAll = () => {
-    setWishlist([]);
-    localStorage.removeItem("college-predictor-wishlist");
+    setWishlist(EMPTY_LIST);
   };
 
   const exportList = () => {
