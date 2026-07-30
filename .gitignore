@@ -46,3 +46,6 @@ next-env.d.ts
 # AI tool config files — not for humans
 AGENTS.md
 CLAUDE.md
+
+# local editor/agent config
+.claude/
