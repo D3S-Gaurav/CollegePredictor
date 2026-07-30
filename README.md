@@ -110,15 +110,33 @@ npm run verify:data
 
 | Source | Year | Rounds | Institutes | Branches | Rows |
 | :--- | :---: | :---: | :---: | :---: | ---: |
-| JoSAA | 2024 | — | — | — | — |
-| JoSAA | 2025 | — | — | — | — |
-| CSAB | 2024 | — | — | — | — |
-| CSAB | 2025 | — | — | — | — |
-| **Total** | 2024–2025 | — | — | — | — |
+| JoSAA | 2024 | 5 | 9 | 60 | 2,983 |
+| JoSAA | 2025 | 6 | 6 | 44 | 3,152 |
+| CSAB | 2024 | — | — | — | 0 |
+| CSAB | 2025 | — | — | — | 0 |
+| **Total** | 2024–2025 | 11 | **9** | **67** | **6,135** |
 
-> **Not yet populated.** Run the importers, then `npm run verify:data` and
-> paste its markdown output over this table. Row counts should not be quoted
-> anywhere until that output exists.
+Closing ranks span 1–26,718 across 10 categories and 9 states. Verified
+2026-07-30.
+
+> ### ⚠️ This dataset is incomplete
+>
+> The site's dropdowns offer **121 institutes** and **236 programs**, but the
+> capture holds only **9 institutes, all IITs**. The results grid is paginated
+> and [`scrape-josaa.ts`](scripts/scrape-josaa.ts) reads only the first table
+> on the page — there is no pager traversal — so each round yields page one
+> and nothing more. Institute names beginning "Indian Institute of
+> Technology…" sort first alphabetically, which is why the sample is
+> uniformly IIT.
+>
+> Practical consequences: there is **not one NIT, IIIT or GFTI in the data**,
+> so `/nit-predictor` and `/iiit-predictor` return nothing, and the scoring
+> model's institute-tier component — which recognises NIT, IIIT and GFTI —
+> contributes zero for every row currently loaded.
+>
+> Fixing this means driving the grid's pager via `__EVENTTARGET` /
+> `__EVENTARGUMENT` postbacks and concatenating the pages. Until then, treat
+> the loaded data as a demonstration sample, not a complete archive.
 
 **Upstream source:** [`josaa.admissions.nic.in`](https://josaa.admissions.nic.in) —
 `applicant/seatmatrix/openingclosingrankarchieve.aspx`

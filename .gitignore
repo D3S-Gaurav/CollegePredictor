@@ -49,3 +49,8 @@ CLAUDE.md
 
 # local editor/agent config
 .claude/
+
+# scraper artefacts — regenerate with `npm run scrape-josaa`
+/josaa_*.csv
+/csab_*.csv
+/debug/

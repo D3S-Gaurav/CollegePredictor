@@ -6,13 +6,16 @@
  * Supports CSV and XLSX formats.
  */
 
-import { PrismaClient } from "../src/generated/prisma/client";
+import "dotenv/config";
 import { parse } from "csv-parse/sync";
 import * as XLSX from "xlsx";
 import * as fs from "fs";
 import * as path from "path";
 
-const prisma = new PrismaClient();
+/* Reuse the configured singleton. Constructing `new PrismaClient()` here threw
+   under Prisma 7, which requires an explicit driver adapter — so every importer
+   failed at startup after the Prisma 7 upgrade. */
+import { prisma } from "../src/lib/prisma";
 
 /** Column header normalization map */
 const HEADER_MAP: Record<string, string> = {
