@@ -16,7 +16,12 @@
     "import:csab-2024": "npx tsx scripts/import-csab-2024.ts",
     "import:csab-2025": "npx tsx scripts/import-csab-2025.ts",
     "scrape-josaa": "npx tsx scripts/scrape-josaa.ts",
-    "import:josaa-scraped": "npx tsx scripts/import-josaa-scraped.ts"
+    "import:josaa-scraped": "npx tsx scripts/import-josaa-scraped.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "verify:data": "npx tsx scripts/verify-data.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
@@ -62,6 +67,7 @@
     "playwright": "^1.60.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }
