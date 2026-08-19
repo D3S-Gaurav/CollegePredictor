@@ -1,0 +1,1412 @@
+/*
+ * Title: CloudSim Toolkit
+ * Description: Cloud Simulation Toolkit for Modeling and Simulation
+ * of Clouds
+ * License: GPL - http://www.gnu.org/copyleft/gpl.html
+ *
+ * Copyright (c) 2009, The University of Melbourne, Australia
+ */
+ 
+package org.cloudbus.cloudsim.examples;
+ 
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+ 
+import org.cloudbus.cloudsim.Cloudlet;
+import org.cloudbus.cloudsim.CloudletSchedulerTimeShared;
+import org.cloudbus.cloudsim.Datacenter;
+import org.cloudbus.cloudsim.DatacenterBroker;
+import org.cloudbus.cloudsim.DatacenterCharacteristics;
+import org.cloudbus.cloudsim.Host;
+import org.cloudbus.cloudsim.Log;
+import org.cloudbus.cloudsim.Pe;
+import org.cloudbus.cloudsim.Storage;
+import org.cloudbus.cloudsim.UtilizationModel;
+import org.cloudbus.cloudsim.UtilizationModelFull;
+import org.cloudbus.cloudsim.Vm;
+import org.cloudbus.cloudsim.VmAllocationPolicySimple;
+import org.cloudbus.cloudsim.VmSchedulerTimeShared;
+import org.cloudbus.cloudsim.core.CloudSim;
+import org.cloudbus.cloudsim.provisioners.BwProvisionerSimple;
+import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
+import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
+ 
+ 
+/**
+ * CloudSimExample3
+ *
+ * Assignment:
+ *
+ * Implement:
+ * 1. SJF
+ * 2. Round Robin
+ * 3. Max-Min
+ * 4. Min-Min
+ *
+ * Cloudlets:
+ *
+ * C0 = 4000
+ * C1 = 1000
+ * C2 = 3000
+ * C3 = 2000
+ * C4 = 5000
+ * C5 = 1500
+ *
+ * Compare:
+ * - Execution time
+ * - Waiting time
+ * - Start time
+ * - Finish time
+ * - Makespan
+ * - Average completion time
+ */
+public class CloudSimExample3 {
+ 
+    private static List<Cloudlet> cloudletList;
+    private static List<Vm> vmList;
+ 
+ 
+    public static void main(String[] args) {
+ 
+        Log.printLine("Starting CloudSimExample3...");
+ 
+        try {
+ 
+            /*
+             * =========================================================
+             * SELECT ALGORITHM
+             * =========================================================
+             *
+             * Change this value to:
+             *
+             * "SJF"
+             * "RR"
+             * "MAXMIN"
+             * "MINMIN"
+             *
+             */
+ 
+            String algorithm = "SJF";
+ 
+ 
+            /*
+             * =========================================================
+             * STEP 1: INITIALIZE CLOUDSIM
+             * =========================================================
+             */
+ 
+            int numUser = 1;
+ 
+            Calendar calendar = Calendar.getInstance();
+ 
+            boolean traceFlag = false;
+ 
+            CloudSim.init(numUser, calendar, traceFlag);
+ 
+ 
+            /*
+             * =========================================================
+             * STEP 2: CREATE DATACENTER
+             * =========================================================
+             */
+ 
+            Datacenter datacenter0 =
+                    createDatacenter("Datacenter_0");
+ 
+ 
+            /*
+             * =========================================================
+             * STEP 3: CREATE BROKER
+             * =========================================================
+             */
+ 
+            DatacenterBroker broker = createBroker();
+ 
+            int brokerId = broker.getId();
+ 
+ 
+            /*
+             * =========================================================
+             * STEP 4: CREATE TWO VMs
+             * =========================================================
+             *
+             * VM0 = 250 MIPS
+             * VM1 = 500 MIPS
+             *
+             */
+ 
+            vmList = new ArrayList<Vm>();
+ 
+            int vmid = 0;
+ 
+            int mips = 250;
+ 
+            long size = 10000;
+ 
+            int ram = 2048;
+ 
+            long bw = 1000;
+ 
+            int pesNumber = 1;
+ 
+            String vmm = "Xen";
+ 
+ 
+            /*
+             * VM 0
+             */
+ 
+            Vm vm1 = new Vm(
+                    vmid,
+                    brokerId,
+                    mips,
+                    pesNumber,
+                    ram,
+                    bw,
+                    size,
+                    vmm,
+                    new CloudletSchedulerTimeShared()
+            );
+ 
+ 
+            /*
+             * VM 1
+             *
+             * VM1 has twice the MIPS of VM0.
+             */
+ 
+            vmid++;
+ 
+            Vm vm2 = new Vm(
+                    vmid,
+                    brokerId,
+                    mips * 2,
+                    pesNumber,
+                    ram,
+                    bw,
+                    size,
+                    vmm,
+                    new CloudletSchedulerTimeShared()
+            );
+ 
+ 
+            vmList.add(vm1);
+            vmList.add(vm2);
+ 
+            broker.submitVmList(vmList);
+ 
+ 
+            /*
+             * =========================================================
+             * STEP 5: CREATE CLOUDLETS
+             * =========================================================
+             */
+ 
+            cloudletList = new ArrayList<Cloudlet>();
+ 
+            int cloudletId = 0;
+ 
+            long fileSize = 300;
+ 
+            long outputSize = 300;
+ 
+            UtilizationModel utilizationModel =
+                    new UtilizationModelFull();
+ 
+ 
+            /*
+             * C0 = 4000
+             */
+ 
+            cloudletList.add(
+                    createCloudlet(
+                            cloudletId++,
+                            4000,
+                            brokerId,
+                            fileSize,
+                            outputSize,
+                            utilizationModel
+                    )
+            );
+ 
+ 
+            /*
+             * C1 = 1000
+             */
+ 
+            cloudletList.add(
+                    createCloudlet(
+                            cloudletId++,
+                            1000,
+                            brokerId,
+                            fileSize,
+                            outputSize,
+                            utilizationModel
+                    )
+            );
+ 
+ 
+            /*
+             * C2 = 3000
+             */
+ 
+            cloudletList.add(
+                    createCloudlet(
+                            cloudletId++,
+                            3000,
+                            brokerId,
+                            fileSize,
+                            outputSize,
+                            utilizationModel
+                    )
+            );
+ 
+ 
+            /*
+             * C3 = 2000
+             */
+ 
+            cloudletList.add(
+                    createCloudlet(
+                            cloudletId++,
+                            2000,
+                            brokerId,
+                            fileSize,
+                            outputSize,
+                            utilizationModel
+                    )
+            );
+ 
+ 
+            /*
+             * C4 = 5000
+             */
+ 
+            cloudletList.add(
+                    createCloudlet(
+                            cloudletId++,
+                            5000,
+                            brokerId,
+                            fileSize,
+                            outputSize,
+                            utilizationModel
+                    )
+            );
+ 
+ 
+            /*
+             * C5 = 1500
+             */
+ 
+            cloudletList.add(
+                    createCloudlet(
+                            cloudletId++,
+                            1500,
+                            brokerId,
+                            fileSize,
+                            outputSize,
+                            utilizationModel
+                    )
+            );
+ 
+ 
+            /*
+             * Submit cloudlets to broker.
+             */
+ 
+            broker.submitCloudletList(cloudletList);
+ 
+ 
+            /*
+             * =========================================================
+             * STEP 6: APPLY SCHEDULING ALGORITHM
+             * =========================================================
+             */
+ 
+            System.out.println();
+            System.out.println("==============================================");
+            System.out.println("ALGORITHM: " + algorithm);
+            System.out.println("==============================================");
+ 
+ 
+            switch (algorithm.toUpperCase()) {
+ 
+                case "SJF":
+ 
+                    scheduleSJF(
+                            cloudletList,
+                            vmList,
+                            broker
+                    );
+ 
+                    break;
+ 
+ 
+                case "RR":
+ 
+                    scheduleRoundRobin(
+                            cloudletList,
+                            vmList,
+                            broker
+                    );
+ 
+                    break;
+ 
+ 
+                case "MAXMIN":
+ 
+                    scheduleMaxMin(
+                            cloudletList,
+                            vmList,
+                            broker
+                    );
+ 
+                    break;
+ 
+ 
+                case "MINMIN":
+ 
+                    scheduleMinMin(
+                            cloudletList,
+                            vmList,
+                            broker
+                    );
+ 
+                    break;
+ 
+ 
+                default:
+ 
+                    System.out.println(
+                            "Invalid algorithm selected."
+                    );
+ 
+                    return;
+            }
+ 
+ 
+            /*
+             * =========================================================
+             * STEP 7: START SIMULATION
+             * =========================================================
+             */
+ 
+            CloudSim.startSimulation();
+ 
+ 
+            /*
+             * Get completed cloudlets.
+             */
+ 
+            List<Cloudlet> newList =
+                    broker.getCloudletReceivedList();
+ 
+ 
+            /*
+             * Stop simulation.
+             */
+ 
+            CloudSim.stopSimulation();
+ 
+ 
+            /*
+             * =========================================================
+             * STEP 8: PRINT RESULTS
+             * =========================================================
+             */
+ 
+            printCloudletList(newList);
+ 
+ 
+            /*
+             * =========================================================
+             * STEP 9: PRINT COMPARISON METRICS
+             * =========================================================
+             */
+ 
+            printMetrics(newList);
+ 
+ 
+            Log.printLine(
+                    "CloudSimExample3 finished!"
+            );
+ 
+        }
+        catch (Exception e) {
+ 
+            e.printStackTrace();
+ 
+            Log.printLine(
+                    "The simulation has been terminated due to an unexpected error"
+            );
+        }
+    }
+ 
+ 
+    /*
+     * ================================================================
+     * CREATE CLOUDLET
+     * ================================================================
+     */
+ 
+    private static Cloudlet createCloudlet(
+            int id,
+            long length,
+            int brokerId,
+            long fileSize,
+            long outputSize,
+            UtilizationModel utilizationModel) {
+ 
+        Cloudlet cloudlet =
+                new Cloudlet(
+                        id,
+                        length,
+                        1,
+                        fileSize,
+                        outputSize,
+                        utilizationModel,
+                        utilizationModel,
+                        utilizationModel
+                );
+ 
+        cloudlet.setUserId(brokerId);
+ 
+        return cloudlet;
+    }
+ 
+ 
+    /*
+     * ================================================================
+     * SJF
+     * ================================================================
+     *
+     * Shortest Job First:
+     *
+     * Select cloudlets in increasing order of length.
+     *
+     */
+ 
+    private static void scheduleSJF(
+            List<Cloudlet> cloudlets,
+            List<Vm> vms,
+            DatacenterBroker broker) {
+ 
+        System.out.println();
+        System.out.println("---------- SJF ----------");
+ 
+ 
+        /*
+         * Make a copy so that the original list
+         * is not destroyed.
+         */
+ 
+        List<Cloudlet> remaining =
+                new ArrayList<Cloudlet>(cloudlets);
+ 
+ 
+        /*
+         * Sort according to cloudlet length.
+         */
+ 
+        remaining.sort(
+                Comparator.comparingLong(
+                        Cloudlet::getCloudletLength
+                )
+        );
+ 
+ 
+        /*
+         * Track when each VM becomes available.
+         */
+ 
+        double[] vmAvailableTime =
+                new double[vms.size()];
+ 
+ 
+        for (Cloudlet cloudlet : remaining) {
+ 
+            int selectedVm = 0;
+ 
+ 
+            /*
+             * Select VM which becomes available first.
+             */
+ 
+            for (int i = 1; i < vms.size(); i++) {
+ 
+                if (vmAvailableTime[i]
+                        < vmAvailableTime[selectedVm]) {
+ 
+                    selectedVm = i;
+                }
+            }
+ 
+ 
+            Vm vm = vms.get(selectedVm);
+ 
+ 
+            /*
+             * Calculate execution time.
+             */
+ 
+            double executionTime =
+                    (double) cloudlet.getCloudletLength()
+                    / vm.getMips();
+ 
+ 
+            /*
+             * Bind cloudlet to VM.
+             */
+ 
+            broker.bindCloudletToVm(
+                    cloudlet.getCloudletId(),
+                    vm.getId()
+            );
+ 
+ 
+            System.out.println(
+                    "C" + cloudlet.getCloudletId()
+                    + " -> VM" + vm.getId()
+                    + " | Length = "
+                    + cloudlet.getCloudletLength()
+                    + " | Execution Time = "
+                    + executionTime
+            );
+ 
+ 
+            /*
+             * Update VM availability.
+             */
+ 
+            vmAvailableTime[selectedVm]
+                    += executionTime;
+        }
+    }
+ 
+ 
+    /*
+     * ================================================================
+     * ROUND ROBIN
+     * ================================================================
+     */
+ 
+    private static void scheduleRoundRobin(
+            List<Cloudlet> cloudlets,
+            List<Vm> vms,
+            DatacenterBroker broker) {
+ 
+        System.out.println();
+        System.out.println("---------- ROUND ROBIN ----------");
+ 
+ 
+        int vmIndex = 0;
+ 
+ 
+        for (Cloudlet cloudlet : cloudlets) {
+ 
+            Vm vm = vms.get(vmIndex);
+ 
+ 
+            /*
+             * Bind cloudlet to VM.
+             */
+ 
+            broker.bindCloudletToVm(
+                    cloudlet.getCloudletId(),
+                    vm.getId()
+            );
+ 
+ 
+            double executionTime =
+                    (double) cloudlet.getCloudletLength()
+                    / vm.getMips();
+ 
+ 
+            System.out.println(
+                    "C" + cloudlet.getCloudletId()
+                    + " -> VM" + vm.getId()
+                    + " | Length = "
+                    + cloudlet.getCloudletLength()
+                    + " | Execution Time = "
+                    + executionTime
+            );
+ 
+ 
+            /*
+             * Move to next VM.
+             */
+ 
+            vmIndex =
+                    (vmIndex + 1) % vms.size();
+        }
+    }
+ 
+ 
+    /*
+     * ================================================================
+     * MIN-MIN
+     * ================================================================
+     *
+     * 1. Find minimum completion time for every cloudlet.
+     * 2. Select cloudlet having the smallest of those values.
+     * 3. Assign it to the corresponding VM.
+     * 4. Repeat.
+     *
+     */
+ 
+    private static void scheduleMinMin(
+            List<Cloudlet> cloudlets,
+            List<Vm> vms,
+            DatacenterBroker broker) {
+ 
+        System.out.println();
+        System.out.println("---------- MIN-MIN ----------");
+ 
+ 
+        List<Cloudlet> remaining =
+                new ArrayList<Cloudlet>(cloudlets);
+ 
+ 
+        double[] vmAvailableTime =
+                new double[vms.size()];
+ 
+ 
+        while (!remaining.isEmpty()) {
+ 
+            Cloudlet selectedCloudlet = null;
+ 
+            int selectedVm = -1;
+ 
+            double globalMinimumCompletion =
+                    Double.MAX_VALUE;
+ 
+ 
+            /*
+             * Check every remaining cloudlet.
+             */
+ 
+            for (Cloudlet cloudlet : remaining) {
+ 
+                double minimumCompletion =
+                        Double.MAX_VALUE;
+ 
+                int bestVm = -1;
+ 
+ 
+                /*
+                 * Find the VM producing minimum
+                 * completion time for this cloudlet.
+                 */
+ 
+                for (int i = 0; i < vms.size(); i++) {
+ 
+                    double executionTime =
+                            (double)
+                            cloudlet.getCloudletLength()
+                            / vms.get(i).getMips();
+ 
+ 
+                    double completionTime =
+                            vmAvailableTime[i]
+                            + executionTime;
+ 
+ 
+                    if (completionTime
+                            < minimumCompletion) {
+ 
+                        minimumCompletion =
+                                completionTime;
+ 
+                        bestVm = i;
+                    }
+                }
+ 
+ 
+                /*
+                 * Select the globally minimum
+                 * completion time.
+                 */
+ 
+                if (minimumCompletion
+                        < globalMinimumCompletion) {
+ 
+                    globalMinimumCompletion =
+                            minimumCompletion;
+ 
+                    selectedCloudlet =
+                            cloudlet;
+ 
+                    selectedVm =
+                            bestVm;
+                }
+            }
+ 
+ 
+            Vm vm =
+                    vms.get(selectedVm);
+ 
+ 
+            double executionTime =
+                    (double)
+                    selectedCloudlet.getCloudletLength()
+                    / vm.getMips();
+ 
+ 
+            /*
+             * Bind cloudlet.
+             */
+ 
+            broker.bindCloudletToVm(
+                    selectedCloudlet.getCloudletId(),
+                    vm.getId()
+            );
+ 
+ 
+            System.out.println(
+                    "C"
+                    + selectedCloudlet.getCloudletId()
+                    + " -> VM"
+                    + vm.getId()
+                    + " | Start = "
+                    + vmAvailableTime[selectedVm]
+                    + " | Finish = "
+                    + globalMinimumCompletion
+                    + " | Execution = "
+                    + executionTime
+            );
+ 
+ 
+            /*
+             * Update VM availability.
+             */
+ 
+            vmAvailableTime[selectedVm] =
+                    globalMinimumCompletion;
+ 
+ 
+            /*
+             * Remove scheduled cloudlet.
+             */
+ 
+            remaining.remove(
+                    selectedCloudlet
+            );
+        }
+    }
+ 
+ 
+    /*
+     * ================================================================
+     * MAX-MIN
+     * ================================================================
+     *
+     * 1. Find minimum completion time for every cloudlet.
+     * 2. Select cloudlet having the maximum of those minimum values.
+     * 3. Assign it to the corresponding VM.
+     * 4. Repeat.
+     *
+     */
+ 
+    private static void scheduleMaxMin(
+            List<Cloudlet> cloudlets,
+            List<Vm> vms,
+            DatacenterBroker broker) {
+ 
+        System.out.println();
+        System.out.println("---------- MAX-MIN ----------");
+ 
+ 
+        List<Cloudlet> remaining =
+                new ArrayList<Cloudlet>(cloudlets);
+ 
+ 
+        double[] vmAvailableTime =
+                new double[vms.size()];
+ 
+ 
+        while (!remaining.isEmpty()) {
+ 
+            Cloudlet selectedCloudlet = null;
+ 
+            int selectedVm = -1;
+ 
+            double maximumMinimumCompletion =
+                    -1;
+ 
+ 
+            /*
+             * Examine every remaining cloudlet.
+             */
+ 
+            for (Cloudlet cloudlet : remaining) {
+ 
+                double minimumCompletion =
+                        Double.MAX_VALUE;
+ 
+                int bestVm = -1;
+ 
+ 
+                /*
+                 * Find minimum completion time
+                 * for this cloudlet.
+                 */
+ 
+                for (int i = 0; i < vms.size(); i++) {
+ 
+                    double executionTime =
+                            (double)
+                            cloudlet.getCloudletLength()
+                            / vms.get(i).getMips();
+ 
+ 
+                    double completionTime =
+                            vmAvailableTime[i]
+                            + executionTime;
+ 
+ 
+                    if (completionTime
+                            < minimumCompletion) {
+ 
+                        minimumCompletion =
+                                completionTime;
+ 
+                        bestVm = i;
+                    }
+                }
+ 
+ 
+                /*
+                 * MAX-MIN:
+                 *
+                 * Select the cloudlet whose
+                 * minimum completion time is maximum.
+                 */
+ 
+                if (minimumCompletion
+                        > maximumMinimumCompletion) {
+ 
+                    maximumMinimumCompletion =
+                            minimumCompletion;
+ 
+                    selectedCloudlet =
+                            cloudlet;
+ 
+                    selectedVm =
+                            bestVm;
+                }
+            }
+ 
+ 
+            Vm vm =
+                    vms.get(selectedVm);
+ 
+ 
+            double executionTime =
+                    (double)
+                    selectedCloudlet.getCloudletLength()
+                    / vm.getMips();
+ 
+ 
+            /*
+             * Bind cloudlet to VM.
+             */
+ 
+            broker.bindCloudletToVm(
+                    selectedCloudlet.getCloudletId(),
+                    vm.getId()
+            );
+ 
+ 
+            System.out.println(
+                    "C"
+                    + selectedCloudlet.getCloudletId()
+                    + " -> VM"
+                    + vm.getId()
+                    + " | Start = "
+                    + vmAvailableTime[selectedVm]
+                    + " | Finish = "
+                    + maximumMinimumCompletion
+                    + " | Execution = "
+                    + executionTime
+            );
+ 
+ 
+            /*
+             * Update VM availability.
+             */
+ 
+            vmAvailableTime[selectedVm] =
+                    maximumMinimumCompletion;
+ 
+ 
+            /*
+             * Remove scheduled cloudlet.
+             */
+ 
+            remaining.remove(
+                    selectedCloudlet
+            );
+        }
+    }
+ 
+ 
+    /*
+     * ================================================================
+     * CREATE DATACENTER
+     * ================================================================
+     */
+ 
+    private static Datacenter createDatacenter(
+            String name) {
+ 
+        /*
+         * List of hosts.
+         */
+ 
+        List<Host> hostList =
+                new ArrayList<Host>();
+ 
+ 
+        /*
+         * First host.
+         */
+ 
+        List<Pe> peList1 =
+                new ArrayList<Pe>();
+ 
+ 
+        int mips = 1000;
+ 
+ 
+        peList1.add(
+                new Pe(
+                        0,
+                        new PeProvisionerSimple(mips)
+                )
+        );
+ 
+ 
+        int hostId = 0;
+ 
+        int ram = 2048;
+ 
+        long storage = 1000000;
+ 
+        int bw = 10000;
+ 
+ 
+        hostList.add(
+                new Host(
+                        hostId,
+                        new RamProvisionerSimple(ram),
+                        new BwProvisionerSimple(bw),
+                        storage,
+                        peList1,
+                        new VmSchedulerTimeShared(peList1)
+                )
+        );
+ 
+ 
+        /*
+         * Second host.
+         */
+ 
+        List<Pe> peList2 =
+                new ArrayList<Pe>();
+ 
+ 
+        peList2.add(
+                new Pe(
+                        0,
+                        new PeProvisionerSimple(mips)
+                )
+        );
+ 
+ 
+        hostId++;
+ 
+ 
+        hostList.add(
+                new Host(
+                        hostId,
+                        new RamProvisionerSimple(ram),
+                        new BwProvisionerSimple(bw),
+                        storage,
+                        peList2,
+                        new VmSchedulerTimeShared(peList2)
+                )
+        );
+ 
+ 
+        /*
+         * Datacenter characteristics.
+         */
+ 
+        String arch = "x86";
+ 
+        String os = "Linux";
+ 
+        String vmm = "Xen";
+ 
+        double time_zone = 10.0;
+ 
+        double cost = 3.0;
+ 
+        double costPerMem = 0.05;
+ 
+        double costPerStorage = 0.001;
+ 
+        double costPerBw = 0.0;
+ 
+ 
+        LinkedList<Storage> storageList =
+                new LinkedList<Storage>();
+ 
+ 
+        DatacenterCharacteristics characteristics =
+                new DatacenterCharacteristics(
+                        arch,
+                        os,
+                        vmm,
+                        hostList,
+                        time_zone,
+                        cost,
+                        costPerMem,
+                        costPerStorage,
+                        costPerBw
+                );
+ 
+ 
+        Datacenter datacenter = null;
+ 
+ 
+        try {
+ 
+            datacenter =
+                    new Datacenter(
+                            name,
+                            characteristics,
+                            new VmAllocationPolicySimple(hostList),
+                            storageList,
+                            0
+                    );
+ 
+        }
+        catch (Exception e) {
+ 
+            e.printStackTrace();
+        }
+ 
+ 
+        return datacenter;
+    }
+ 
+ 
+    /*
+     * ================================================================
+     * CREATE BROKER
+     * ================================================================
+     */
+ 
+    private static DatacenterBroker createBroker() {
+ 
+        DatacenterBroker broker = null;
+ 
+ 
+        try {
+ 
+            broker =
+                    new DatacenterBroker(
+                            "Broker"
+                    );
+ 
+        }
+        catch (Exception e) {
+ 
+            e.printStackTrace();
+ 
+            return null;
+        }
+ 
+ 
+        return broker;
+    }
+ 
+ 
+    /*
+     * ================================================================
+     * PRINT CLOUDLET RESULTS
+     * ================================================================
+     */
+ 
+    private static void printCloudletList(
+            List<Cloudlet> list) {
+ 
+        int size =
+                list.size();
+ 
+        Cloudlet cloudlet;
+ 
+ 
+        String indent = " ";
+ 
+ 
+        Log.printLine();
+ 
+        Log.printLine(
+                "================ OUTPUT ================"
+        );
+ 
+ 
+        Log.printLine(
+                "Cloudlet ID"
+                + indent
+                + "STATUS"
+                + indent
+                + "Data Center ID"
+                + indent
+                + "VM ID"
+                + indent
+                + "Execution Time"
+                + indent
+                + "Waiting Time"
+                + indent
+                + "Start Time"
+                + indent
+                + "Finish Time"
+        );
+ 
+ 
+        DecimalFormat dft =
+                new DecimalFormat("###.##");
+ 
+ 
+        for (int i = 0; i < size; i++) {
+ 
+            cloudlet =
+                    list.get(i);
+ 
+ 
+            if (cloudlet.getCloudletStatus()
+                    == Cloudlet.SUCCESS) {
+ 
+ 
+                double executionTime =
+                        cloudlet.getActualCPUTime();
+ 
+ 
+                double startTime =
+                        cloudlet.getExecStartTime();
+ 
+ 
+                double finishTime =
+                        cloudlet.getFinishTime();
+ 
+ 
+                double waitingTime =
+                        startTime;
+ 
+ 
+                Log.printLine(
+                        indent
+                        + cloudlet.getCloudletId()
+ 
+                        + indent
+                        + "SUCCESS"
+ 
+                        + indent
+                        + cloudlet.getResourceId()
+ 
+                        + indent
+                        + cloudlet.getVmId()
+ 
+                        + indent
+                        + dft.format(
+                                executionTime
+                        )
+ 
+                        + indent
+                        + dft.format(
+                                waitingTime
+                        )
+ 
+                        + indent
+                        + dft.format(
+                                startTime
+                        )
+ 
+                        + indent
+                        + dft.format(
+                                finishTime
+                        )
+                );
+            }
+        }
+    }
+ 
+ 
+    /*
+     * ================================================================
+     * CALCULATE ASSIGNMENT METRICS
+     * ================================================================
+     */
+ 
+    private static void printMetrics(
+            List<Cloudlet> list) {
+ 
+        if (list == null || list.isEmpty()) {
+ 
+            System.out.println(
+                    "No cloudlets completed."
+            );
+ 
+            return;
+        }
+ 
+ 
+        double makespan = 0;
+ 
+        double totalCompletionTime = 0;
+ 
+        double totalWaitingTime = 0;
+ 
+        double totalExecutionTime = 0;
+ 
+ 
+        for (Cloudlet cloudlet : list) {
+ 
+            if (cloudlet.getCloudletStatus()
+                    == Cloudlet.SUCCESS) {
+ 
+ 
+                double start =
+                        cloudlet.getExecStartTime();
+ 
+ 
+                double finish =
+                        cloudlet.getFinishTime();
+ 
+ 
+                double execution =
+                        cloudlet.getActualCPUTime();
+ 
+ 
+                double waiting =
+                        start;
+ 
+ 
+                /*
+                 * Makespan is the largest finish time.
+                 */
+ 
+                if (finish > makespan) {
+ 
+                    makespan = finish;
+                }
+ 
+ 
+                totalCompletionTime +=
+                        finish;
+ 
+ 
+                totalWaitingTime +=
+                        waiting;
+ 
+ 
+                totalExecutionTime +=
+                        execution;
+            }
+        }
+ 
+ 
+        int n = list.size();
+ 
+ 
+        double averageCompletionTime =
+                totalCompletionTime / n;
+ 
+ 
+        double averageWaitingTime =
+                totalWaitingTime / n;
+ 
+ 
+        double averageExecutionTime =
+                totalExecutionTime / n;
+ 
+ 
+        DecimalFormat df =
+                new DecimalFormat("###.##");
+ 
+ 
+        System.out.println();
+ 
+        System.out.println(
+                "=============================================="
+        );
+ 
+        System.out.println(
+                "             PERFORMANCE METRICS"
+        );
+ 
+        System.out.println(
+                "=============================================="
+        );
+ 
+ 
+        System.out.println(
+                "Algorithm               : "
+                + getAlgorithmName()
+        );
+ 
+ 
+        System.out.println(
+                "Makespan                : "
+                + df.format(makespan)
+        );
+ 
+ 
+        System.out.println(
+                "Average Completion Time : "
+                + df.format(
+                        averageCompletionTime
+                )
+        );
+ 
+ 
+        System.out.println(
+                "Average Waiting Time    : "
+                + df.format(
+                        averageWaitingTime
+                )
+        );
+ 
+ 
+        System.out.println(
+                "Average Execution Time  : "
+                + df.format(
+                        averageExecutionTime
+                )
+        );
+ 
+ 
+        System.out.println(
+                "=============================================="
+        );
+    }
+ 
+ 
+    /*
+     * ================================================================
+     * CURRENT ALGORITHM
+     * ================================================================
+     */
+ 
+    private static String getAlgorithmName() {
+ 
+        return "Selected algorithm";
+    }
+}
